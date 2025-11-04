@@ -1,0 +1,44 @@
+# Kruse Transkriptionskonvention
+# Für qualitative Forschung nach Kruse
+
+# Sprecher-Mapping
+speakers:
+  SPEAKER_00: "I"    # Interviewer
+  SPEAKER_01: "P1"   # Participant 1
+  SPEAKER_02: "P2"   # Participant 2
+  SPEAKER_03: "P3"   # Participant 3
+  SPEAKER_04: "P4"   # Participant 4
+  SPEAKER_05: "P5"   # Participant 5
+  default: "P"       # Fallback für weitere Sprecher
+
+# Paraverbale Symbole
+symbols:
+  short_pause: "(.)"           # Kurze Pause
+  medium_pause: "(..)"         # Mittlere Pause
+  long_pause: "({}s)"          # Lange Pause mit Sekunden
+  laughter: "((lacht))"        # Lachen
+  sigh: "((seufzt))"           # Seufzen
+  unclear: "(unv.)"            # Unverständlich
+  uncertain: "(?)"             # Unsicher
+  interruption: "/"            # Unterbrechung
+  emphasis: "_wort_"           # Betonung
+  elongation: "wo::rt"         # Dehnung
+
+# Format-Einstellungen
+format:
+  line_numbers: true           # Zeilennummern anzeigen
+  timestamps_each_block: true  # Zeitstempel pro Sprecher-Block
+  timestamp_format: "MM:SS"    # Zeitformat
+  max_line_length: 80          # Maximale Zeilenlänge
+
+# Pausen-Schwellenwerte
+thresholds:
+  short_pause_s: 1.0           # Ab 1.0s → "(.)"
+  medium_pause_s: 2.0          # Ab 2.0s → "(..)"
+  long_pause_min_s: 3.0        # Ab 3.0s → "(3s)"
+
+# Ausgabe-Optionen
+output:
+  generate_html: true          # HTML-Version generieren
+  generate_txt: true           # Plaintext-Version generieren
+  generate_docx: false         # DOCX-Version (optional)
