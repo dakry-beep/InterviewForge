@@ -13,6 +13,7 @@ Automatisierte Audio-Transkription mit Sprecherdiarisation im wissenschaftlichen
 
 ## Features
 
+- ✅ **Grafische Benutzeroberfläche (GUI)** - einfach zu bedienen
 - ✅ **Automatische Transkription** mit OpenAI Whisper (API oder lokal)
 - ✅ **Datenschutz-Modus** mit lokalem Whisper (kein API-Key nötig)
 - ✅ **Sprecherdiarisation** mit Pyannote Audio 3.1
@@ -93,6 +94,30 @@ pip install -r requirements.txt
 ```bash
 pip install -r requirements-local.txt
 ```
+
+**Für GUI (grafische Oberfläche):**
+
+Die GUI nutzt `tkinter`, das bei den meisten Python-Installationen bereits enthalten ist.
+
+**Falls tkinter fehlt:**
+
+**Ubuntu/Debian:**
+```bash
+sudo apt install python3-tk
+```
+
+**Fedora/RHEL:**
+```bash
+sudo dnf install python3-tkinter
+```
+
+**macOS:**
+```bash
+brew install python-tk
+```
+
+**Windows:**
+tkinter ist bereits in der Standard-Python-Installation enthalten.
 
 ### 5. FFmpeg installieren
 
@@ -204,7 +229,77 @@ InterviewForge unterstützt zwei Transkriptions-Modi:
 
 ## Verwendung
 
-### Automatische Pipeline (empfohlen)
+### 🖥️ Grafische Benutzeroberfläche (GUI) - Empfohlen für Einsteiger
+
+InterviewForge verfügt über eine benutzerfreundliche grafische Oberfläche für einfache Bedienung!
+
+**Start der GUI:**
+
+**Linux/macOS:**
+```bash
+./start_gui.sh
+```
+
+**Windows (Doppelklick):**
+- `start_gui.bat` (CMD)
+- `start_gui.ps1` (PowerShell)
+
+**Oder direkt mit Python:**
+```bash
+python interviewforge_gui.py
+```
+
+**GUI Features:**
+- 📁 Einfache Ordnerauswahl per Durchsuchen-Button
+- ⚙️ Alle Einstellungen an einem Ort:
+  - Whisper-Modus (Auto/API/Lokal)
+  - Sprecheranzahl
+  - Modellgröße für lokalen Modus
+- 🔑 API-Keys direkt eingeben (mit Anzeigen/Verstecken)
+- 📊 Live-Fortschrittsanzeige mit farbigem Log
+- 🎯 Start/Stop-Buttons
+- 📂 Direkter Zugriff auf Output-Ordner
+
+**Screenshot-Übersicht:**
+```
+┌─────────────────────────────────────────────┐
+│        🎙️ InterviewForge                    │
+├─────────────────────────────────────────────┤
+│ 📁 Eingabe                                   │
+│   Audio-Ordner: [C:\audio] [Durchsuchen]   │
+├─────────────────────────────────────────────┤
+│ ⚙️ Einstellungen                             │
+│   Whisper-Modus:    [auto ▼]                │
+│   Anzahl Sprecher:  [2]                     │
+│   Modellgröße:      [medium ▼]              │
+├─────────────────────────────────────────────┤
+│ 🔑 API-Keys                                  │
+│   OpenAI:     [***********] [Anzeigen]      │
+│   HuggingFace:[***********] [Anzeigen]      │
+├─────────────────────────────────────────────┤
+│ 📊 Fortschritt                               │
+│ ┌─────────────────────────────────────────┐ │
+│ │ [00:12] ✅ Optimierung abgeschlossen    │ │
+│ │ [00:13] 🎤 Transkribiere Datei 1/5...  │ │
+│ └─────────────────────────────────────────┘ │
+│ [████████████░░░░░░░░░░░] 60%              │
+├─────────────────────────────────────────────┤
+│ [▶️ Starten] [⏹️ Stoppen] [📁 Output öffnen]│
+└─────────────────────────────────────────────┘
+```
+
+**Vorteile der GUI:**
+- ✅ Keine Kommandozeilen-Kenntnisse erforderlich
+- ✅ Alle Optionen übersichtlich an einem Ort
+- ✅ Direkte visuelle Rückmeldung
+- ✅ API-Keys sicher eingeben (mit Passwort-Schutz)
+- ✅ Einfacher Zugriff auf Ergebnisse
+
+---
+
+### 💻 Kommandozeile / Terminal
+
+#### Automatische Pipeline
 
 **Linux/macOS:**
 ```bash
@@ -482,6 +577,25 @@ Fortlaufende Nummerierung für wissenschaftliche Zitation (Zeile 1→, 2→, etc
 
 ## Troubleshooting
 
+### GUI startet nicht: "ModuleNotFoundError: No module named 'tkinter'"
+
+**Linux:**
+```bash
+# Ubuntu/Debian
+sudo apt install python3-tk
+
+# Fedora/RHEL
+sudo dnf install python3-tkinter
+```
+
+**macOS:**
+```bash
+brew install python-tk
+```
+
+**Windows:**
+tkinter sollte bereits installiert sein. Falls nicht, installiere Python neu von python.org
+
 ### "ModuleNotFoundError: No module named 'openai'"
 ```bash
 pip install -r requirements.txt
@@ -635,12 +749,14 @@ Contributions sind willkommen! Bitte erstelle einen Pull Request oder öffne ein
 
 ## Roadmap
 
+- [x] ~~Lokales Whisper-Modell (ohne API)~~ ✅ Implementiert
+- [x] ~~GUI (Grafische Benutzeroberfläche)~~ ✅ Implementiert
 - [ ] Support für mehr Transkriptionsformate (GAT2, HIAT)
-- [ ] Web-Interface
+- [ ] Web-Interface (Browser-basiert)
 - [ ] Docker-Container
-- [ ] Lokales Whisper-Modell (ohne API)
 - [ ] Automatische Qualitätskontrolle
 - [ ] Multi-Sprach-Support
+- [ ] Audio-Recorder Integration
 
 ---
 
