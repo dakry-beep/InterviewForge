@@ -101,7 +101,14 @@ brew install ffmpeg
 ```
 
 **Windows:**
-Lade FFmpeg von [ffmpeg.org](https://ffmpeg.org/download.html) herunter
+```powershell
+# Mit winget (empfohlen)
+winget install --id=Gyan.FFmpeg -e
+
+# Oder manueller Download
+# Lade FFmpeg von https://ffmpeg.org/download.html herunter
+# Füge FFmpeg zum PATH hinzu
+```
 
 ### 6. API-Keys konfigurieren
 
@@ -116,9 +123,22 @@ Lade FFmpeg von [ffmpeg.org](https://ffmpeg.org/download.html) herunter
 
 **Umgebungsvariablen setzen:**
 
+**Linux/macOS:**
 ```bash
 export OPENAI_API_KEY='your-openai-api-key-here'
 export HF_TOKEN='your-huggingface-token-here'
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:OPENAI_API_KEY='your-openai-api-key-here'
+$env:HF_TOKEN='your-huggingface-token-here'
+```
+
+**Windows (CMD):**
+```cmd
+set OPENAI_API_KEY=your-openai-api-key-here
+set HF_TOKEN=your-huggingface-token-here
 ```
 
 Oder erstelle eine `.env` Datei:
@@ -131,27 +151,54 @@ HF_TOKEN=your-huggingface-token-here
 
 ## Verwendung
 
-### Basis-Verwendung
+### Automatische Pipeline (empfohlen)
 
+**Linux/macOS:**
+```bash
+./run_pipeline.sh /path/to/audio/folder [anzahl_sprecher]
+```
+
+**Windows (PowerShell):**
+```powershell
+.\run_pipeline.ps1 -InputDir "C:\path\to\audio\folder" -Speakers 2
+```
+
+**Windows (CMD):**
+```cmd
+run_pipeline.bat "C:\path\to\audio\folder" 2
+```
+
+Die Pipeline führt automatisch durch:
+1. ✅ Audio-Optimierung (FFmpeg)
+2. ✅ Transkription mit Whisper
+3. ✅ Speaker Diarization
+4. ✅ Kruse-Format Export
+
+### Manuelle Verwendung
+
+**Linux/macOS:**
 ```bash
 python whisper_kruse_diarization.py /path/to/audio/folder \
   --pattern '*.wav' \
   --speakers 2
 ```
 
+**Windows:**
+```powershell
+python whisper_kruse_diarization.py "C:\path\to\audio\folder" --pattern "*.wav" --speakers 2
+```
+
 ### Audio-Optimierung (empfohlen)
 
 Optimiere deine Audio-Dateien vor der Transkription:
 
+**Einzelne Datei (alle Systeme):**
 ```bash
-# Einzelne Datei
-ffmpeg -i input.m4a \
-  -ar 16000 \
-  -ac 1 \
-  -af "highpass=f=200,lowpass=f=3000,loudnorm=I=-16" \
-  output_optimized.wav -y
+ffmpeg -i input.m4a -ar 16000 -ac 1 -af "highpass=f=200,lowpass=f=3000,loudnorm=I=-16" output_optimized.wav -y
+```
 
-# Batch-Verarbeitung
+**Batch-Verarbeitung (Linux/macOS):**
+```bash
 for file in *.m4a; do
   ffmpeg -i "$file" \
     -ar 16000 \
@@ -159,6 +206,22 @@ for file in *.m4a; do
     -af "highpass=f=200,lowpass=f=3000,loudnorm=I=-16" \
     "${file%.m4a}_optimized.wav" -y
 done
+```
+
+**Batch-Verarbeitung (Windows PowerShell):**
+```powershell
+Get-ChildItem *.m4a | ForEach-Object {
+  ffmpeg -i $_.FullName `
+    -ar 16000 `
+    -ac 1 `
+    -af "highpass=f=200,lowpass=f=3000,loudnorm=I=-16" `
+    "$($_.BaseName)_optimized.wav" -y
+}
+```
+
+**Batch-Verarbeitung (Windows CMD):**
+```cmd
+for %%f in (*.m4a) do ffmpeg -i "%%f" -ar 16000 -ac 1 -af "highpass=f=200,lowpass=f=3000,loudnorm=I=-16" "%%~nf_optimized.wav" -y
 ```
 
 **Optimierungs-Parameter:**
@@ -181,18 +244,39 @@ done
 ### Beispiele
 
 **Alle WAV-Dateien transkribieren:**
+
+Linux/macOS:
 ```bash
 python whisper_kruse_diarization.py ./audio --pattern '*.wav' --speakers 2
 ```
 
+Windows:
+```powershell
+python whisper_kruse_diarization.py .\audio --pattern "*.wav" --speakers 2
+```
+
 **Optimierte Dateien verarbeiten:**
+
+Linux/macOS:
 ```bash
 python whisper_kruse_diarization.py ./audio --pattern '*_optimized.wav' --speakers 2
 ```
 
+Windows:
+```powershell
+python whisper_kruse_diarization.py .\audio --pattern "*_optimized.wav" --speakers 2
+```
+
 **Eigene Config verwenden:**
+
+Linux/macOS:
 ```bash
 python whisper_kruse_diarization.py ./audio --config my_config.yaml
+```
+
+Windows:
+```powershell
+python whisper_kruse_diarization.py .\audio --config my_config.yaml
 ```
 
 ---
@@ -335,9 +419,46 @@ echo $OPENAI_API_KEY
 ### "pyannote model not found"
 1. Akzeptiere die Nutzungsbedingungen: https://huggingface.co/pyannote/speaker-diarization-3.1
 2. Prüfe deinen HF Token:
+
+Linux/macOS:
 ```bash
 echo $HF_TOKEN
 ```
+
+Windows (PowerShell):
+```powershell
+echo $env:HF_TOKEN
+```
+
+Windows (CMD):
+```cmd
+echo %HF_TOKEN%
+```
+
+### Windows: "Execution Policy" Fehler bei PowerShell
+Wenn du den Fehler "cannot be loaded because running scripts is disabled" erhältst:
+
+```powershell
+# Execution Policy temporär für diese Sitzung ändern
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+
+# Oder dauerhaft für den aktuellen User
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### Windows: FFmpeg nicht im PATH
+Wenn FFmpeg nicht gefunden wird:
+
+1. Installiere mit winget:
+```powershell
+winget install --id=Gyan.FFmpeg -e
+```
+
+2. Oder füge FFmpeg manuell zum PATH hinzu:
+   - Lade FFmpeg von https://ffmpeg.org/download.html
+   - Entpacke nach `C:\ffmpeg`
+   - Füge `C:\ffmpeg\bin` zum System PATH hinzu
+   - Starte PowerShell/CMD neu
 
 ---
 
