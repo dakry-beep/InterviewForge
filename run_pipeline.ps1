@@ -11,12 +11,17 @@
 .PARAMETER Speakers
     Anzahl erwarteter Sprecher (Standard: 2)
 
+.PARAMETER Mode
+    Whisper-Modus: api (OpenAI API), local (lokal), auto (automatisch, Standard)
+
 .EXAMPLE
-    .\run_pipeline.ps1 -InputDir "C:\audio" -Speakers 2
+    .\run_pipeline.ps1 -InputDir "C:\audio" -Speakers 2 -Mode api
+    .\run_pipeline.ps1 "C:\audio" 2 local
     .\run_pipeline.ps1 "C:\audio"
 
 .NOTES
-    Erfordert: Python 3.10+, FFmpeg, OpenAI API Key, HuggingFace Token
+    API-Modus: OpenAI API Key erforderlich
+    Lokal-Modus: Keine API Keys, aber mehr RAM/GPU empfohlen
 #>
 
 param(
@@ -24,7 +29,11 @@ param(
     [string]$InputDir,
 
     [Parameter(Mandatory=$false, Position=1)]
-    [int]$Speakers = 2
+    [int]$Speakers = 2,
+
+    [Parameter(Mandatory=$false, Position=2)]
+    [ValidateSet('api', 'local', 'auto')]
+    [string]$Mode = 'auto'
 )
 
 # Farb-Funktionen
@@ -97,22 +106,28 @@ if (-not (Test-Path "venv")) {
 $pythonVersion = & python --version 2>&1
 Write-Info "Python: $pythonVersion"
 
-# Prüfe API Keys
-if (-not $env:OPENAI_API_KEY) {
-    Write-Error-Custom "OPENAI_API_KEY nicht gesetzt!"
+# Prüfe API Keys basierend auf Modus
+if ($Mode -eq 'api' -and -not $env:OPENAI_API_KEY) {
+    Write-Error-Custom "API-Modus gewählt, aber OPENAI_API_KEY nicht gesetzt!"
     Write-Host "Setze mit: `$env:OPENAI_API_KEY='your-key'" -ForegroundColor Yellow
-    Write-Host "Oder erstelle .env Datei" -ForegroundColor Yellow
+    Write-Host "Oder nutze lokalen Modus: .\run_pipeline.ps1 '$InputDir' $Speakers local" -ForegroundColor Yellow
     exit 1
+}
+
+if ($Mode -eq 'auto' -and -not $env:OPENAI_API_KEY) {
+    Write-Warn "Kein OPENAI_API_KEY gefunden - nutze lokalen Modus"
+    $Mode = 'local'
 }
 
 if (-not $env:HF_TOKEN) {
-    Write-Error-Custom "HF_TOKEN nicht gesetzt!"
-    Write-Host "Setze mit: `$env:HF_TOKEN='your-token'" -ForegroundColor Yellow
-    Write-Host "Oder erstelle .env Datei" -ForegroundColor Yellow
-    exit 1
+    Write-Warn "HF_TOKEN nicht gesetzt - Pyannote braucht evtl. einen"
 }
 
-Write-Info "API Keys gefunden ✓"
+if ($Mode -eq 'api') {
+    Write-Info "API Keys gefunden ✓"
+} else {
+    Write-Info "Lokaler Modus - keine API Keys erforderlich"
+}
 Write-Host ""
 
 # ============================================
@@ -166,10 +181,10 @@ Write-Host ""
 # SCHRITT 2: Transkription
 # ============================================
 Write-Host "=" * 70 -ForegroundColor Cyan
-Write-Info "Schritt 2/3: Transkription (Whisper + Pyannote)"
+Write-Info "Schritt 2/3: Transkription (Whisper [$Mode] + Pyannote)"
 Write-Host "=" * 70 -ForegroundColor Cyan
 
-& python whisper_kruse_diarization.py "$InputDir" --pattern "*_optimized.wav" --speakers $Speakers
+& python whisper_kruse_diarization.py "$InputDir" --pattern "*_optimized.wav" --speakers $Speakers --mode $Mode
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error-Custom "Transkription fehlgeschlagen!"

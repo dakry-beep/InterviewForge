@@ -1,19 +1,23 @@
 @echo off
 REM Vollständige Transkriptions-Pipeline für Windows
-REM Verwendung: run_pipeline.bat C:\path\to\audio\folder [anzahl_sprecher]
+REM Verwendung: run_pipeline.bat C:\path\to\audio\folder [anzahl_sprecher] [mode]
+REM mode: api (OpenAI API), local (lokal), auto (automatisch, Standard)
 
 setlocal enabledelayedexpansion
 
 REM Prüfe Argumente
 if "%~1"=="" (
     echo [ERROR] Kein Input-Ordner angegeben!
-    echo Verwendung: run_pipeline.bat C:\path\to\audio\folder [anzahl_sprecher]
+    echo Verwendung: run_pipeline.bat C:\path\to\audio\folder [anzahl_sprecher] [mode]
+    echo   mode: api ^(OpenAI API^), local ^(lokal^), auto ^(automatisch, Standard^)
     exit /b 1
 )
 
 set INPUT_DIR=%~1
 set SPEAKERS=%2
 if "%SPEAKERS%"=="" set SPEAKERS=2
+set MODE=%3
+if "%MODE%"=="" set MODE=auto
 
 REM Prüfe ob Ordner existiert
 if not exist "%INPUT_DIR%" (
@@ -55,19 +59,25 @@ if not exist "venv" (
     call venv\Scripts\activate.bat
 )
 
-REM Prüfe API Keys
-if "%OPENAI_API_KEY%"=="" (
-    echo [ERROR] OPENAI_API_KEY nicht gesetzt!
-    echo Setze mit: set OPENAI_API_KEY=your-key
-    echo Oder erstelle .env Datei
-    exit /b 1
+REM Prüfe API Keys basierend auf Modus
+if "%MODE%"=="api" (
+    if "%OPENAI_API_KEY%"=="" (
+        echo [ERROR] API-Modus gewählt, aber OPENAI_API_KEY nicht gesetzt!
+        echo Setze mit: set OPENAI_API_KEY=your-key
+        echo Oder nutze lokalen Modus: run_pipeline.bat "%INPUT_DIR%" %SPEAKERS% local
+        exit /b 1
+    )
+)
+
+if "%MODE%"=="auto" (
+    if "%OPENAI_API_KEY%"=="" (
+        echo [WARN] Kein OPENAI_API_KEY gefunden - nutze lokalen Modus
+        set MODE=local
+    )
 )
 
 if "%HF_TOKEN%"=="" (
-    echo [ERROR] HF_TOKEN nicht gesetzt!
-    echo Setze mit: set HF_TOKEN=your-token
-    echo Oder erstelle .env Datei
-    exit /b 1
+    echo [WARN] HF_TOKEN nicht gesetzt - Pyannote braucht evtl. einen
 )
 
 REM ============================================
@@ -105,9 +115,9 @@ echo [INFO] Optimiert: %OPTIMIZED_COUNT% Dateien
 REM ============================================
 REM SCHRITT 2: Transkription
 REM ============================================
-echo [INFO] Schritt 2/3: Transkription (Whisper + Pyannote)
+echo [INFO] Schritt 2/3: Transkription (Whisper [%MODE%] + Pyannote)
 
-python whisper_kruse_diarization.py "%INPUT_DIR%" --pattern "*_optimized.wav" --speakers %SPEAKERS%
+python whisper_kruse_diarization.py "%INPUT_DIR%" --pattern "*_optimized.wav" --speakers %SPEAKERS% --mode %MODE%
 
 REM ============================================
 REM SCHRITT 3: Zusammenfassung

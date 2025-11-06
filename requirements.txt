@@ -1,0 +1,17 @@
+# InterviewForge - Basis-Dependencies (API-Modus)
+
+# OpenAI Whisper API
+openai>=1.12.0
+
+# Pyannote Audio für Speaker Diarization
+pyannote.audio>=3.1.0
+
+# PyTorch (für Pyannote) - CPU version
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# YAML für Konfiguration
+pyyaml>=6.0
+
+# Optional: python-dotenv für .env Dateien
+python-dotenv>=1.0.0

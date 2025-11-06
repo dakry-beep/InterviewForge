@@ -1,6 +1,7 @@
 #!/bin/bash
 # Vollständige Transkriptions-Pipeline
-# Verwendung: ./run_pipeline.sh /path/to/audio/folder
+# Verwendung: ./run_pipeline.sh /path/to/audio/folder [anzahl_sprecher] [mode]
+# mode: api (OpenAI API), local (lokal), auto (automatisch)
 
 set -e  # Exit bei Fehler
 
@@ -26,12 +27,14 @@ log_error() {
 # Prüfe Argumente
 if [ $# -eq 0 ]; then
     log_error "Kein Input-Ordner angegeben!"
-    echo "Verwendung: ./run_pipeline.sh /path/to/audio/folder"
+    echo "Verwendung: ./run_pipeline.sh /path/to/audio/folder [anzahl_sprecher] [mode]"
+    echo "  mode: api (OpenAI API), local (lokal), auto (automatisch, Standard)"
     exit 1
 fi
 
 INPUT_DIR="$1"
 SPEAKERS="${2:-2}"  # Default: 2 Sprecher
+MODE="${3:-auto}"   # Default: auto
 
 # Prüfe ob Ordner existiert
 if [ ! -d "$INPUT_DIR" ]; then
@@ -67,19 +70,21 @@ else
     source venv/bin/activate
 fi
 
-# Prüfe API Keys
-if [ -z "$OPENAI_API_KEY" ]; then
-    log_error "OPENAI_API_KEY nicht gesetzt!"
+# Prüfe API Keys basierend auf Modus
+if [ "$MODE" = "api" ] && [ -z "$OPENAI_API_KEY" ]; then
+    log_error "API-Modus gewählt, aber OPENAI_API_KEY nicht gesetzt!"
     echo "Setze mit: export OPENAI_API_KEY='your-key'"
-    echo "Oder erstelle .env Datei basierend auf .env.example"
+    echo "Oder nutze lokalen Modus: ./run_pipeline.sh $INPUT_DIR $SPEAKERS local"
     exit 1
 fi
 
+if [ "$MODE" = "auto" ] && [ -z "$OPENAI_API_KEY" ]; then
+    log_warn "Kein OPENAI_API_KEY gefunden - nutze lokalen Modus"
+    MODE="local"
+fi
+
 if [ -z "$HF_TOKEN" ]; then
-    log_error "HF_TOKEN nicht gesetzt!"
-    echo "Setze mit: export HF_TOKEN='your-token'"
-    echo "Oder erstelle .env Datei basierend auf .env.example"
-    exit 1
+    log_warn "HF_TOKEN nicht gesetzt - Pyannote braucht evtl. einen"
 fi
 
 # ============================================
@@ -126,11 +131,12 @@ log_info "Optimiert: $OPTIMIZED_COUNT Dateien"
 # ============================================
 # SCHRITT 2: Transkription
 # ============================================
-log_info "Schritt 2/3: Transkription (Whisper + Pyannote)"
+log_info "Schritt 2/3: Transkription (Whisper [$MODE] + Pyannote)"
 
 python3 whisper_kruse_diarization.py "$INPUT_DIR" \
     --pattern '*_optimized.wav' \
-    --speakers "$SPEAKERS"
+    --speakers "$SPEAKERS" \
+    --mode "$MODE"
 
 # ============================================
 # SCHRITT 3: Zusammenfassung

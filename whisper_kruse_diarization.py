@@ -65,8 +65,8 @@ def format_time_kruse(seconds: float, format_type: str = "MM:SS") -> str:
         return f"{hours:02d}:{mins:02d}:{secs:02d}"
 
 def transcribe_with_openai(client: OpenAI, audio_file: Path, language: str = "de", prompt: str = None) -> dict:
-    """Transkribiert mit OpenAI Whisper"""
-    print_colored(f"📤 OpenAI Whisper: {audio_file.name}", Colors.OKCYAN)
+    """Transkribiert mit OpenAI Whisper API"""
+    print_colored(f"📤 OpenAI Whisper API: {audio_file.name}", Colors.OKCYAN)
 
     file_size_mb = audio_file.stat().st_size / (1024 * 1024)
 
@@ -92,9 +92,63 @@ def transcribe_with_openai(client: OpenAI, audio_file: Path, language: str = "de
         )
 
     elapsed = time.time() - start
-    print_colored(f"⏱️  OpenAI: {elapsed:.1f}s", Colors.OKGREEN)
+    print_colored(f"⏱️  OpenAI API: {elapsed:.1f}s", Colors.OKGREEN)
 
     return transcript
+
+def transcribe_with_local_whisper(audio_file: Path, language: str = "de", model_size: str = "base") -> dict:
+    """Transkribiert mit lokalem Whisper-Modell (Datenschutz-freundlich)"""
+    try:
+        import whisper
+        import torch
+    except ImportError:
+        print_colored("❌ openai-whisper nicht installiert!", Colors.FAIL)
+        print_colored("   Installiere mit: pip install -U openai-whisper", Colors.WARNING)
+        print_colored("   Oder für GPU-Support: pip install -U openai-whisper torch", Colors.WARNING)
+        return None
+
+    print_colored(f"💻 Lokales Whisper ({model_size}): {audio_file.name}", Colors.OKCYAN)
+
+    # GPU-Check
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda":
+        print_colored(f"🚀 GPU aktiviert: {torch.cuda.get_device_name(0)}", Colors.OKGREEN)
+    else:
+        print_colored("⚠️  CPU-Modus (langsamer, aber funktioniert)", Colors.WARNING)
+
+    start = time.time()
+
+    # Lade Modell (wird automatisch gecacht in ~/.cache/whisper/)
+    print_colored(f"📥 Lade Whisper-Modell '{model_size}'...", Colors.OKCYAN)
+    model = whisper.load_model(model_size, device=device)
+
+    # Transkribiere
+    print_colored(f"🎤 Transkribiere...", Colors.OKCYAN)
+    result = model.transcribe(
+        str(audio_file),
+        language=language,
+        task="transcribe",
+        verbose=False,
+        temperature=0.0,
+        word_timestamps=False  # Segment-timestamps reichen
+    )
+
+    elapsed = time.time() - start
+    print_colored(f"⏱️  Lokales Whisper: {elapsed:.1f}s", Colors.OKGREEN)
+
+    # Konvertiere zu API-ähnlichem Format
+    class Segment:
+        def __init__(self, seg_dict):
+            self.start = seg_dict['start']
+            self.end = seg_dict['end']
+            self.text = seg_dict['text']
+
+    class TranscriptResult:
+        def __init__(self, segments_list):
+            self.segments = [Segment(s) for s in segments_list]
+            self.text = " ".join([s['text'] for s in segments_list])
+
+    return TranscriptResult(result['segments'])
 
 def diarize_with_pyannote(audio_file: Path, num_speakers: Optional[int] = None) -> dict:
     """Speaker Diarization mit pyannote.audio"""
@@ -357,7 +411,12 @@ def generate_kruse_txt(segments: List[dict], audio_file: Path, output_file: Path
 
 def main():
     parser = argparse.ArgumentParser(
-        description="OpenAI Whisper + Pyannote Diarization + Kruse Format"
+        description="Whisper (API/Lokal) + Pyannote Diarization + Kruse Format",
+        epilog="Beispiele:\n"
+               "  API-Modus:   python whisper_kruse_diarization.py ./audio --mode api\n"
+               "  Lokal-Modus: python whisper_kruse_diarization.py ./audio --mode local --model-size medium\n"
+               "  Auto-Modus:  python whisper_kruse_diarization.py ./audio --mode auto",
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('input_folder', type=str, help='Ordner mit Audio-Dateien')
     parser.add_argument('-o', '--output', type=str, default=None,
@@ -370,6 +429,15 @@ def main():
                        help='Anzahl Sprecher (für Diarization)')
     parser.add_argument('-l', '--language', type=str, default='de',
                        help='Sprache (Standard: de)')
+
+    # Whisper-Modus
+    parser.add_argument('--mode', type=str, default='auto', choices=['api', 'local', 'auto'],
+                       help='Whisper-Modus: api (OpenAI API), local (lokal), auto (automatisch) [Standard: auto]')
+    parser.add_argument('--model-size', type=str, default='base',
+                       choices=['tiny', 'base', 'small', 'medium', 'large', 'large-v2', 'large-v3'],
+                       help='Modellgröße für lokales Whisper [Standard: base]')
+
+    # API Keys
     parser.add_argument('--api-key', type=str, default=None,
                        help='OpenAI API Key (oder OPENAI_API_KEY env)')
     parser.add_argument('--hf-token', type=str, default=None,
@@ -401,18 +469,33 @@ def main():
 
     output_folder.mkdir(parents=True, exist_ok=True)
 
-    # API Keys
+    # Bestimme Whisper-Modus
+    whisper_mode = args.mode
     api_key = args.api_key or os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        print_colored("❌ Kein OpenAI API Key!", Colors.FAIL)
+
+    # Auto-Modus: Entscheide basierend auf API-Key
+    if whisper_mode == 'auto':
+        if api_key:
+            whisper_mode = 'api'
+            print_colored("🔄 Auto-Modus: OpenAI API Key gefunden → API-Modus", Colors.OKCYAN)
+        else:
+            whisper_mode = 'local'
+            print_colored("🔄 Auto-Modus: Kein API Key → Lokaler Modus", Colors.OKCYAN)
+
+    # Validierung
+    if whisper_mode == 'api' and not api_key:
+        print_colored("❌ API-Modus gewählt, aber kein OpenAI API Key vorhanden!", Colors.FAIL)
+        print_colored("   Setze OPENAI_API_KEY oder nutze --mode local", Colors.WARNING)
         sys.exit(1)
 
     hf_token = args.hf_token or os.getenv('HF_TOKEN')
     if not hf_token:
         print_colored("⚠️  Kein HuggingFace Token - Pyannote braucht evtl. einen", Colors.WARNING)
 
-    # OpenAI Client
-    client = OpenAI(api_key=api_key)
+    # OpenAI Client (nur für API-Modus)
+    client = None
+    if whisper_mode == 'api':
+        client = OpenAI(api_key=api_key)
 
     # Find files
     if args.pattern:
@@ -429,11 +512,15 @@ def main():
 
     # Header
     print_colored(f"\n{'='*70}", Colors.HEADER)
-    print_colored(f"🎙️ OpenAI Whisper + Pyannote + Kruse", Colors.HEADER)
+    if whisper_mode == 'api':
+        print_colored(f"🎙️ Whisper (API) + Pyannote + Kruse", Colors.HEADER)
+    else:
+        print_colored(f"🎙️ Whisper (Lokal: {args.model_size}) + Pyannote + Kruse", Colors.HEADER)
     print_colored(f"{'='*70}", Colors.HEADER)
     print_colored(f"📁 Input:  {input_folder}", Colors.OKBLUE)
     print_colored(f"📁 Output: {output_folder}", Colors.OKBLUE)
     print_colored(f"📊 Dateien: {len(audio_files)}", Colors.OKBLUE)
+    print_colored(f"🔧 Modus: {whisper_mode.upper()}", Colors.OKBLUE)
     print_colored(f"{'='*70}\n", Colors.HEADER)
 
     # Process files
@@ -449,8 +536,12 @@ def main():
             continue
 
         try:
-            # 1. OpenAI Whisper Transkription
-            transcript = transcribe_with_openai(client, audio_file, args.language)
+            # 1. Whisper Transkription (API oder lokal)
+            if whisper_mode == 'api':
+                transcript = transcribe_with_openai(client, audio_file, args.language)
+            else:  # local
+                transcript = transcribe_with_local_whisper(audio_file, args.language, args.model_size)
+
             if not transcript:
                 failed += 1
                 continue

@@ -58,6 +58,8 @@ transcripts_whisper_kruse/
 outputs/
 results/
 *.txt
+# Exception: requirements files should be tracked
+!requirements*.txt
 
 # Logs
 *.log

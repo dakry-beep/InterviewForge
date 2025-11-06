@@ -1,0 +1,15 @@
+# InterviewForge - Lokaler Modus (ohne OpenAI API)
+# Installiere mit: pip install -r requirements-local.txt
+
+# Basis-Dependencies
+-r requirements.txt
+
+# Lokales Whisper-Modell
+openai-whisper>=20231117
+
+# GPU-Support (optional - für schnellere Verarbeitung)
+# Wenn du eine NVIDIA GPU hast, installiere stattdessen:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Zusätzliche Audio-Dependencies für Whisper
+ffmpeg-python>=0.2.0

@@ -13,7 +13,8 @@ Automatisierte Audio-Transkription mit Sprecherdiarisation im wissenschaftlichen
 
 ## Features
 
-- ✅ **Automatische Transkription** mit OpenAI Whisper API
+- ✅ **Automatische Transkription** mit OpenAI Whisper (API oder lokal)
+- ✅ **Datenschutz-Modus** mit lokalem Whisper (kein API-Key nötig)
 - ✅ **Sprecherdiarisation** mit Pyannote Audio 3.1
 - ✅ **Wissenschaftliches Format** (Kruse-Notation)
 - ✅ **Audio-Optimierung** (FFmpeg)
@@ -83,8 +84,14 @@ venv\Scripts\activate  # Windows
 
 ### 4. Dependencies installieren
 
+**Für API-Modus (empfohlen für beste Qualität):**
 ```bash
 pip install -r requirements.txt
+```
+
+**Für Lokal-Modus (Datenschutz, ohne OpenAI API):**
+```bash
+pip install -r requirements-local.txt
 ```
 
 ### 5. FFmpeg installieren
@@ -112,14 +119,22 @@ winget install --id=Gyan.FFmpeg -e
 
 ### 6. API-Keys konfigurieren
 
-**OpenAI API Key:**
+#### Für API-Modus:
+
+**OpenAI API Key (erforderlich):**
 1. Erstelle einen Account bei [OpenAI](https://platform.openai.com/)
 2. Generiere einen API Key unter [API Keys](https://platform.openai.com/api-keys)
 
-**Hugging Face Token:**
+**Hugging Face Token (erforderlich):**
 1. Erstelle einen Account bei [Hugging Face](https://huggingface.co/)
 2. Akzeptiere die Nutzungsbedingungen für [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
 3. Generiere einen Token unter [Settings > Access Tokens](https://huggingface.co/settings/tokens)
+
+#### Für Lokal-Modus:
+
+**Hugging Face Token (erforderlich):**
+- Nur für Pyannote Speaker Diarization erforderlich
+- Kein OpenAI API Key nötig!
 
 **Umgebungsvariablen setzen:**
 
@@ -149,23 +164,76 @@ HF_TOKEN=your-huggingface-token-here
 
 ---
 
+## Whisper Modi: API vs. Lokal
+
+InterviewForge unterstützt zwei Transkriptions-Modi:
+
+### 🌐 API-Modus (empfohlen für beste Qualität)
+- **Vorteile:**
+  - ✅ Beste Transkriptionsqualität
+  - ✅ Bessere Performance bei Hintergrundmusik
+  - ✅ Geringere Hardware-Anforderungen
+  - ✅ Keine Modell-Downloads erforderlich
+- **Nachteile:**
+  - ❌ OpenAI API Key erforderlich (kostenpflichtig)
+  - ❌ Audio-Daten werden an OpenAI gesendet
+  - ❌ Internet-Verbindung erforderlich
+  - ❌ Dateilimit: 25 MB
+
+### 💻 Lokal-Modus (Datenschutz)
+- **Vorteile:**
+  - ✅ **Volle Datenschutz-Kontrolle** (keine Daten verlassen deinen Computer)
+  - ✅ Kein OpenAI API Key erforderlich (kostenlos)
+  - ✅ Offline-Nutzung möglich
+  - ✅ Keine Dateigrößen-Limits
+- **Nachteile:**
+  - ❌ Höhere Hardware-Anforderungen (GPU empfohlen)
+  - ❌ Längere Verarbeitungszeit
+  - ❌ Modell-Download erforderlich (~3GB für large)
+  - ❌ Evtl. niedrigere Qualität bei komplexen Audios
+
+### 🔄 Auto-Modus (Standard)
+- Nutzt API-Modus wenn `OPENAI_API_KEY` gesetzt ist
+- Fällt automatisch auf Lokal-Modus zurück wenn kein API-Key vorhanden
+
+**Empfehlung:**
+- **Wissenschaftliche Interviews mit sensiblen Daten:** Lokal-Modus
+- **Öffentliche Daten / beste Qualität:** API-Modus
+
+---
+
 ## Verwendung
 
 ### Automatische Pipeline (empfohlen)
 
 **Linux/macOS:**
 ```bash
-./run_pipeline.sh /path/to/audio/folder [anzahl_sprecher]
+# Auto-Modus (empfohlen)
+./run_pipeline.sh /path/to/audio/folder 2 auto
+
+# API-Modus
+./run_pipeline.sh /path/to/audio/folder 2 api
+
+# Lokal-Modus (Datenschutz)
+./run_pipeline.sh /path/to/audio/folder 2 local
 ```
 
 **Windows (PowerShell):**
 ```powershell
-.\run_pipeline.ps1 -InputDir "C:\path\to\audio\folder" -Speakers 2
+# Auto-Modus (empfohlen)
+.\run_pipeline.ps1 -InputDir "C:\audio" -Speakers 2 -Mode auto
+
+# Lokal-Modus (Datenschutz)
+.\run_pipeline.ps1 -InputDir "C:\audio" -Speakers 2 -Mode local
 ```
 
 **Windows (CMD):**
 ```cmd
-run_pipeline.bat "C:\path\to\audio\folder" 2
+REM Auto-Modus
+run_pipeline.bat "C:\audio" 2 auto
+
+REM Lokal-Modus
+run_pipeline.bat "C:\audio" 2 local
 ```
 
 Die Pipeline führt automatisch durch:
@@ -178,15 +246,35 @@ Die Pipeline führt automatisch durch:
 
 **Linux/macOS:**
 ```bash
+# API-Modus
 python whisper_kruse_diarization.py /path/to/audio/folder \
   --pattern '*.wav' \
-  --speakers 2
+  --speakers 2 \
+  --mode api
+
+# Lokal-Modus (Datenschutz)
+python whisper_kruse_diarization.py /path/to/audio/folder \
+  --pattern '*.wav' \
+  --speakers 2 \
+  --mode local \
+  --model-size medium
 ```
 
 **Windows:**
 ```powershell
-python whisper_kruse_diarization.py "C:\path\to\audio\folder" --pattern "*.wav" --speakers 2
+# API-Modus
+python whisper_kruse_diarization.py "C:\audio" --pattern "*.wav" --speakers 2 --mode api
+
+# Lokal-Modus
+python whisper_kruse_diarization.py "C:\audio" --pattern "*.wav" --speakers 2 --mode local --model-size medium
 ```
+
+**Verfügbare Modellgrößen (lokal):**
+- `tiny` - Schnellstes Modell (~1 GB RAM, niedrige Qualität)
+- `base` - Standard (~1 GB RAM, gute Balance)
+- `small` - Bessere Qualität (~2 GB RAM)
+- `medium` - Hohe Qualität (~5 GB RAM, empfohlen)
+- `large-v3` - Beste Qualität (~10 GB RAM)
 
 ### Audio-Optimierung (empfohlen)
 
@@ -459,6 +547,36 @@ winget install --id=Gyan.FFmpeg -e
    - Entpacke nach `C:\ffmpeg`
    - Füge `C:\ffmpeg\bin` zum System PATH hinzu
    - Starte PowerShell/CMD neu
+
+### Lokales Whisper: Modell-Download
+Beim ersten Mal nutzen des lokalen Modus werden Modelle heruntergeladen:
+
+**Modellgrößen:**
+- `tiny`: ~75 MB
+- `base`: ~150 MB
+- `small`: ~500 MB
+- `medium`: ~1.5 GB
+- `large-v3`: ~3 GB
+
+Die Modelle werden in `~/.cache/whisper/` gespeichert (Linux/macOS) oder `%USERPROFILE%\.cache\whisper\` (Windows).
+
+### Lokales Whisper: GPU-Unterstützung
+Für schnellere lokale Transkription mit NVIDIA GPU:
+
+**Linux:**
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+
+**Windows:**
+```powershell
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+
+Prüfe GPU-Support:
+```python
+python -c "import torch; print(f'CUDA verfügbar: {torch.cuda.is_available()}')"
+```
 
 ---
 
