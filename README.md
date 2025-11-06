@@ -255,6 +255,11 @@ python interviewforge_gui.py
   - Whisper-Modus (Auto/API/Lokal)
   - Sprecheranzahl
   - Modellgröße für lokalen Modus
+- 📄 **Ausgabeformate wählbar:**
+  - TXT (Kruse-Notation)
+  - Markdown (.md)
+  - CSV (für Excel/Analyse)
+  - HTML (für Browser/Präsentation)
 - 🔑 API-Keys direkt eingeben (mit Anzeigen/Verstecken)
 - 📊 Live-Fortschrittsanzeige mit farbigem Log
 - 🎯 Start/Stop-Buttons
@@ -272,6 +277,9 @@ python interviewforge_gui.py
 │   Whisper-Modus:    [auto ▼]                │
 │   Anzahl Sprecher:  [2]                     │
 │   Modellgröße:      [medium ▼]              │
+├─────────────────────────────────────────────┤
+│ 📄 Ausgabeformate                            │
+│   [x] TXT  [x] Markdown  [ ] CSV  [x] HTML  │
 ├─────────────────────────────────────────────┤
 │ 🔑 API-Keys                                  │
 │   OpenAI:     [***********] [Anzeigen]      │
@@ -370,6 +378,69 @@ python whisper_kruse_diarization.py "C:\audio" --pattern "*.wav" --speakers 2 --
 - `small` - Bessere Qualität (~2 GB RAM)
 - `medium` - Hohe Qualität (~5 GB RAM, empfohlen)
 - `large-v3` - Beste Qualität (~10 GB RAM)
+
+### 📄 Ausgabeformate
+
+InterviewForge kann Transkripte in **4 verschiedenen Formaten** exportieren:
+
+```bash
+# Nur TXT (Standard)
+python whisper_kruse_diarization.py ./audio --formats txt
+
+# Mehrere Formate gleichzeitig
+python whisper_kruse_diarization.py ./audio --formats txt md html
+
+# Alle Formate
+python whisper_kruse_diarization.py ./audio --formats all
+```
+
+**Format-Übersicht:**
+
+| Format | Datei | Verwendung | Vorteile |
+|--------|-------|------------|----------|
+| **TXT** | `.txt` | Wissenschaft | Kruse-Notation mit Zeilennummern |
+| **Markdown** | `.md` | Dokumentation | GitHub, Obsidian, Notion |
+| **CSV** | `.csv` | Datenanalyse | Excel, SPSS, R, Python, Pandas |
+| **HTML** | `.html` | Präsentation | Browser, responsive, farbcodiert |
+
+**Format-Beispiele:**
+
+**TXT (Kruse-Notation):**
+```
+  1 [00:01] I: Wie würden Sie Ihre Erfahrungen beschreiben?
+  2
+  3 [00:05] P1: Also (..) ich kann sagen, dass es _sehr_
+  4     interessant war. Besonders die ersten Wochen (.)
+  5     waren herausfordernd.
+```
+
+**Markdown (.md):**
+```markdown
+## Transkript
+
+**[00:01] I:** Wie würden Sie Ihre Erfahrungen beschreiben?
+
+**[00:05] P1:** Also (..) ich kann sagen, dass es _sehr_ interessant war.
+Besonders die ersten Wochen (.) waren herausfordernd.
+```
+
+**CSV:**
+```csv
+Zeile,Zeitstempel,Start (s),Ende (s),Dauer (s),Sprecher ID,Sprecher Label,Text
+1,00:01,1.00,4.50,3.50,SPEAKER_00,I,"Wie würden Sie Ihre Erfahrungen beschreiben?"
+2,00:05,5.20,9.80,4.60,SPEAKER_01,P1,"Also ich kann sagen, dass es sehr interessant war."
+```
+- ✅ Perfekt für statistische Analyse
+- ✅ Import in Excel, SPSS, R
+- ✅ Zeitstempel in Sekunden für Berechnungen
+
+**HTML:**
+- 🎨 Professionelles Design mit CSS
+- 🌈 Farbcodierte Sprecher
+- 📱 Responsive Layout (Desktop & Mobile)
+- 🖨️ Druckoptimiert
+- 🎯 Direkt im Browser öffnen
+- ⚡ Keine Software erforderlich
 
 ### Audio-Optimierung (empfohlen)
 

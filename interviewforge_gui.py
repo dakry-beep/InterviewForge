@@ -122,6 +122,50 @@ class InterviewForgeGUI:
             row=2, column=2, columnspan=2, sticky=tk.W, pady=5
         )
 
+        # === OUTPUT-FORMATE ===
+        formats_frame = ttk.LabelFrame(main_frame, text="📄 Ausgabeformate", padding=15)
+        formats_frame.pack(fill=tk.X, pady=(0, 10))
+
+        tk.Label(formats_frame, text="Wähle Formate:").grid(row=0, column=0, sticky=tk.W, pady=5)
+
+        # Checkboxen für Formate
+        self.format_txt_var = tk.BooleanVar(value=True)
+        self.format_md_var = tk.BooleanVar(value=False)
+        self.format_csv_var = tk.BooleanVar(value=False)
+        self.format_html_var = tk.BooleanVar(value=False)
+
+        format_checks_frame = tk.Frame(formats_frame)
+        format_checks_frame.grid(row=0, column=1, sticky=tk.W, padx=10, pady=5, columnspan=3)
+
+        ttk.Checkbutton(
+            format_checks_frame,
+            text="TXT (Kruse)",
+            variable=self.format_txt_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Checkbutton(
+            format_checks_frame,
+            text="Markdown",
+            variable=self.format_md_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Checkbutton(
+            format_checks_frame,
+            text="CSV",
+            variable=self.format_csv_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        ttk.Checkbutton(
+            format_checks_frame,
+            text="HTML",
+            variable=self.format_html_var
+        ).pack(side=tk.LEFT, padx=5)
+
+        # Info
+        tk.Label(formats_frame, text="Mindestens ein Format auswählen", font=("Helvetica", 8), fg="gray").grid(
+            row=1, column=1, sticky=tk.W, padx=10, pady=(0,5)
+        )
+
         # === API-KEYS ===
         api_frame = ttk.LabelFrame(main_frame, text="🔑 API-Keys", padding=15)
         api_frame.pack(fill=tk.X, pady=(0, 10))
@@ -297,6 +341,12 @@ class InterviewForgeGUI:
             messagebox.showerror("Fehler", "Der ausgewählte Ordner existiert nicht!")
             return False
 
+        # Prüfe ob mindestens ein Format gewählt wurde
+        if not any([self.format_txt_var.get(), self.format_md_var.get(),
+                   self.format_csv_var.get(), self.format_html_var.get()]):
+            messagebox.showerror("Fehler", "Bitte wähle mindestens ein Ausgabeformat!")
+            return False
+
         mode = self.mode_var.get()
 
         # Prüfe API-Key für API-Modus
@@ -342,6 +392,17 @@ class InterviewForgeGUI:
             # Baue Kommando
             script_path = Path(__file__).parent / "whisper_kruse_diarization.py"
 
+            # Sammle gewählte Formate
+            formats = []
+            if self.format_txt_var.get():
+                formats.append('txt')
+            if self.format_md_var.get():
+                formats.append('md')
+            if self.format_csv_var.get():
+                formats.append('csv')
+            if self.format_html_var.get():
+                formats.append('html')
+
             cmd = [
                 sys.executable,
                 str(script_path),
@@ -349,10 +410,12 @@ class InterviewForgeGUI:
                 '--pattern', '*_optimized.wav',
                 '--speakers', str(self.speakers_var.get()),
                 '--mode', self.mode_var.get(),
-                '--model-size', self.model_size_var.get()
-            ]
+                '--model-size', self.model_size_var.get(),
+                '--formats'
+            ] + formats
 
             self.log(f"Befehl: {' '.join(cmd)}")
+            self.log(f"Formate: {', '.join(formats)}")
             self.log("")
 
             # Führe aus

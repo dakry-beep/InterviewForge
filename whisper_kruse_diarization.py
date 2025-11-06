@@ -409,6 +409,249 @@ def generate_kruse_txt(segments: List[dict], audio_file: Path, output_file: Path
 
     print_colored(f"💾 Kruse-TXT gespeichert: {output_file}", Colors.OKGREEN)
 
+def generate_markdown(segments: List[dict], audio_file: Path, output_file: Path, config: dict):
+    """Generiert Markdown-Format"""
+
+    md_lines = []
+    md_lines.append(f"# Transkript: {audio_file.name}")
+    md_lines.append("")
+    md_lines.append(f"**Datum:** {datetime.now().strftime('%d.%m.%Y')}")
+    md_lines.append(f"**Format:** Kruse-Notation (Whisper + Pyannote)")
+    md_lines.append("")
+
+    # Legende
+    md_lines.append("## Legende")
+    md_lines.append("")
+    for speaker_id, label in config['speakers'].items():
+        if speaker_id != 'default':
+            md_lines.append(f"- **{label}**: {speaker_id}")
+    md_lines.append("")
+
+    # Symbole
+    md_lines.append("## Symbole")
+    md_lines.append("")
+    for symbol_name, symbol in config['symbols'].items():
+        md_lines.append(f"- `{symbol}`: {symbol_name.replace('_', ' ').title()}")
+    md_lines.append("")
+
+    # Transkript
+    md_lines.append("---")
+    md_lines.append("")
+    md_lines.append("## Transkript")
+    md_lines.append("")
+
+    prev_end = 0
+    current_speaker = None
+
+    for segment in segments:
+        start = segment.get('start', 0)
+        end = segment.get('end', 0)
+        text = segment.get('text', '').strip()
+        speaker = segment.get('speaker', 'UNKNOWN')
+
+        speaker_label = map_speaker(speaker, config)
+        timestamp = format_time_kruse(start, config['format'].get('timestamp_format', 'MM:SS'))
+
+        # Pause erkennen
+        pause = detect_pause(prev_end, start, config)
+
+        # Neuer Sprecher
+        if speaker != current_speaker:
+            if pause:
+                md_lines.append(f"*{pause}*")
+                md_lines.append("")
+            md_lines.append(f"**[{timestamp}] {speaker_label}:** {text}")
+            current_speaker = speaker
+        else:
+            if pause:
+                md_lines.append(f"*{pause}* {text}")
+            else:
+                md_lines.append(text)
+
+        prev_end = end
+
+    # Schreibe Datei
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(md_lines))
+
+    print_colored(f"💾 Markdown gespeichert: {output_file}", Colors.OKGREEN)
+
+def generate_csv(segments: List[dict], audio_file: Path, output_file: Path, config: dict):
+    """Generiert CSV-Format"""
+    import csv
+
+    with open(output_file, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+
+        # Header
+        writer.writerow([
+            'Zeile',
+            'Zeitstempel',
+            'Start (s)',
+            'Ende (s)',
+            'Dauer (s)',
+            'Sprecher ID',
+            'Sprecher Label',
+            'Text'
+        ])
+
+        # Daten
+        for i, segment in enumerate(segments, 1):
+            start = segment.get('start', 0)
+            end = segment.get('end', 0)
+            text = segment.get('text', '').strip()
+            speaker = segment.get('speaker', 'UNKNOWN')
+
+            speaker_label = map_speaker(speaker, config)
+            timestamp = format_time_kruse(start, config['format'].get('timestamp_format', 'MM:SS'))
+            duration = end - start
+
+            writer.writerow([
+                i,
+                timestamp,
+                f"{start:.2f}",
+                f"{end:.2f}",
+                f"{duration:.2f}",
+                speaker,
+                speaker_label,
+                text
+            ])
+
+    print_colored(f"💾 CSV gespeichert: {output_file}", Colors.OKGREEN)
+
+def generate_html(segments: List[dict], audio_file: Path, output_file: Path, config: dict):
+    """Generiert HTML-Format mit Styling"""
+
+    html_lines = []
+    html_lines.append("<!DOCTYPE html>")
+    html_lines.append("<html lang='de'>")
+    html_lines.append("<head>")
+    html_lines.append("    <meta charset='UTF-8'>")
+    html_lines.append("    <meta name='viewport' content='width=device-width, initial-scale=1.0'>")
+    html_lines.append(f"    <title>Transkript: {audio_file.name}</title>")
+    html_lines.append("    <style>")
+    html_lines.append("        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; background: #f5f5f5; }")
+    html_lines.append("        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }")
+    html_lines.append("        h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }")
+    html_lines.append("        .meta { color: #7f8c8d; font-size: 14px; margin: 10px 0; }")
+    html_lines.append("        .legend { background: #ecf0f1; padding: 15px; border-radius: 5px; margin: 20px 0; }")
+    html_lines.append("        .legend h2 { margin-top: 0; color: #34495e; font-size: 18px; }")
+    html_lines.append("        .legend ul { margin: 5px 0; }")
+    html_lines.append("        .transcript { margin-top: 30px; }")
+    html_lines.append("        .utterance { margin: 15px 0; padding: 15px; border-left: 4px solid #3498db; background: #f8f9fa; border-radius: 4px; }")
+    html_lines.append("        .speaker { font-weight: bold; color: #2980b9; }")
+    html_lines.append("        .timestamp { color: #95a5a6; font-size: 12px; margin-right: 10px; }")
+    html_lines.append("        .text { color: #2c3e50; line-height: 1.6; }")
+    html_lines.append("        .pause { color: #e74c3c; font-style: italic; font-size: 14px; }")
+    html_lines.append("        .speaker-0 { border-left-color: #3498db; }")
+    html_lines.append("        .speaker-1 { border-left-color: #2ecc71; }")
+    html_lines.append("        .speaker-2 { border-left-color: #e74c3c; }")
+    html_lines.append("        .speaker-3 { border-left-color: #f39c12; }")
+    html_lines.append("        .speaker-4 { border-left-color: #9b59b6; }")
+    html_lines.append("    </style>")
+    html_lines.append("</head>")
+    html_lines.append("<body>")
+    html_lines.append("    <div class='container'>")
+    html_lines.append(f"        <h1>🎙️ {audio_file.name}</h1>")
+    html_lines.append(f"        <div class='meta'>Datum: {datetime.now().strftime('%d.%m.%Y')}</div>")
+    html_lines.append(f"        <div class='meta'>Format: Kruse-Notation (Whisper + Pyannote)</div>")
+
+    # Legende
+    html_lines.append("        <div class='legend'>")
+    html_lines.append("            <h2>Legende</h2>")
+    html_lines.append("            <ul>")
+    for speaker_id, label in config['speakers'].items():
+        if speaker_id != 'default':
+            html_lines.append(f"                <li><strong>{label}:</strong> {speaker_id}</li>")
+    html_lines.append("            </ul>")
+
+    html_lines.append("            <h2>Symbole</h2>")
+    html_lines.append("            <ul>")
+    for symbol_name, symbol in config['symbols'].items():
+        html_lines.append(f"                <li><code>{symbol}</code>: {symbol_name.replace('_', ' ').title()}</li>")
+    html_lines.append("            </ul>")
+    html_lines.append("        </div>")
+
+    # Transkript
+    html_lines.append("        <div class='transcript'>")
+
+    prev_end = 0
+    current_speaker = None
+    current_block = []
+    current_start = None
+    speaker_colors = {}
+    color_index = 0
+
+    for segment in segments:
+        start = segment.get('start', 0)
+        end = segment.get('end', 0)
+        text = segment.get('text', '').strip()
+        speaker = segment.get('speaker', 'UNKNOWN')
+
+        speaker_label = map_speaker(speaker, config)
+        timestamp = format_time_kruse(start, config['format'].get('timestamp_format', 'MM:SS'))
+
+        # Pause erkennen
+        pause = detect_pause(prev_end, start, config)
+
+        # Speaker-Farbe zuweisen
+        if speaker not in speaker_colors:
+            speaker_colors[speaker] = color_index % 5
+            color_index += 1
+
+        # Neuer Sprecher
+        if speaker != current_speaker:
+            # Vorherigen Block schreiben
+            if current_block:
+                block_text = ' '.join(current_block)
+                ts = format_time_kruse(current_start, config['format'].get('timestamp_format', 'MM:SS'))
+                prev_label = map_speaker(current_speaker, config)
+                color_class = f"speaker-{speaker_colors[current_speaker]}"
+                html_lines.append(f"            <div class='utterance {color_class}'>")
+                html_lines.append(f"                <span class='timestamp'>[{ts}]</span>")
+                html_lines.append(f"                <span class='speaker'>{prev_label}:</span>")
+                html_lines.append(f"                <div class='text'>{block_text}</div>")
+                html_lines.append("            </div>")
+
+            # Pause vor neuem Sprecher
+            if pause:
+                html_lines.append(f"            <div class='pause'>{pause}</div>")
+
+            # Neuen Block starten
+            current_speaker = speaker
+            current_start = start
+            current_block = [text]
+        else:
+            # Im gleichen Sprecher
+            if pause:
+                current_block.append(f"<span class='pause'>{pause}</span>")
+            current_block.append(text)
+
+        prev_end = end
+
+    # Letzten Block schreiben
+    if current_block:
+        block_text = ' '.join(current_block)
+        ts = format_time_kruse(current_start, config['format'].get('timestamp_format', 'MM:SS'))
+        speaker_label = map_speaker(current_speaker, config)
+        color_class = f"speaker-{speaker_colors[current_speaker]}"
+        html_lines.append(f"            <div class='utterance {color_class}'>")
+        html_lines.append(f"                <span class='timestamp'>[{ts}]</span>")
+        html_lines.append(f"                <span class='speaker'>{speaker_label}:</span>")
+        html_lines.append(f"                <div class='text'>{block_text}</div>")
+        html_lines.append("            </div>")
+
+    html_lines.append("        </div>")
+    html_lines.append("    </div>")
+    html_lines.append("</body>")
+    html_lines.append("</html>")
+
+    # Schreibe Datei
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(html_lines))
+
+    print_colored(f"💾 HTML gespeichert: {output_file}", Colors.OKGREEN)
+
 def main():
     parser = argparse.ArgumentParser(
         description="Whisper (API/Lokal) + Pyannote Diarization + Kruse Format",
@@ -437,6 +680,11 @@ def main():
                        choices=['tiny', 'base', 'small', 'medium', 'large', 'large-v2', 'large-v3'],
                        help='Modellgröße für lokales Whisper [Standard: base]')
 
+    # Output-Formate
+    parser.add_argument('--formats', type=str, nargs='+', default=['txt'],
+                       choices=['txt', 'md', 'csv', 'html', 'all'],
+                       help='Ausgabe-Formate (txt, md, csv, html, all) [Standard: txt]')
+
     # API Keys
     parser.add_argument('--api-key', type=str, default=None,
                        help='OpenAI API Key (oder OPENAI_API_KEY env)')
@@ -444,6 +692,12 @@ def main():
                        help='HuggingFace Token (oder HF_TOKEN env)')
 
     args = parser.parse_args()
+
+    # Format-Liste verarbeiten
+    if 'all' in args.formats:
+        output_formats = ['txt', 'md', 'csv', 'html']
+    else:
+        output_formats = list(set(args.formats))  # Duplikate entfernen
 
     # Paths
     input_folder = Path(args.input_folder)
@@ -556,8 +810,22 @@ def main():
             segments = merge_transcription_and_diarization(transcript, diarization)
             print_colored(f"📊 {len(segments)} Segmente kombiniert", Colors.OKGREEN)
 
-            # 4. Kruse-Format generieren
-            generate_kruse_txt(segments, audio_file, output_txt, kruse_config)
+            # 4. Generiere Output in gewählten Formaten
+            print_colored(f"📝 Generiere Formate: {', '.join(output_formats)}", Colors.OKCYAN)
+
+            for fmt in output_formats:
+                if fmt == 'txt':
+                    output_file = output_folder / f"{audio_file.stem}_whisper_kruse.txt"
+                    generate_kruse_txt(segments, audio_file, output_file, kruse_config)
+                elif fmt == 'md':
+                    output_file = output_folder / f"{audio_file.stem}_whisper_kruse.md"
+                    generate_markdown(segments, audio_file, output_file, kruse_config)
+                elif fmt == 'csv':
+                    output_file = output_folder / f"{audio_file.stem}_whisper_kruse.csv"
+                    generate_csv(segments, audio_file, output_file, kruse_config)
+                elif fmt == 'html':
+                    output_file = output_folder / f"{audio_file.stem}_whisper_kruse.html"
+                    generate_html(segments, audio_file, output_file, kruse_config)
 
             success += 1
 
